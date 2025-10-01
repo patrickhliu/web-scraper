@@ -4,69 +4,56 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
+const winston = require('winston');
 const cors = require("cors");
-
+const port = 3000;
 const app = express();
 app.use(cors());
-const port = 3000;
 
-app.get('/', (req, res) => {
-  console.log(req);
+const logger = winston.createLogger({
+  level: 'info', // Set the minimum level of messages to log (e.g., 'info', 'debug', 'error')
+  format: winston.format.combine(
+    winston.format.timestamp(), // Add a timestamp to your logs
+    winston.format.printf(({ level, message, timestamp }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`; // Customize your log format
+    })
+  ),
+  transports: [
+    //new winston.transports.Console(), // Optional: Log to console as well
+    new winston.transports.File({ filename: 'patrick.log' }) // Log to a file named 'app.log'
+  ]
+});
+
+app.get('/', (req, res, next) => {
   res.send('Hello World from Express!');
 });
 
-app.get('/scrape', async (req, res) => {
+app.get('/scrape', (req, res, next) => {
   //const url = req.query.url;
-  const url = 'https://books.toscrape.com/';
-  console.log(url);
+  const url = 'https://www.nintendo.com/us/store/sales-and-deals';
 
   try {
-    const response = await axios.get(url).then(response => {
-        //console.log(response);
+    axios.get(url).then(response => {
+      /* console.log(response.data);
+      console.log(response.status);
+      console.log(response.statusText);
+      console.log(response.headers);
+      console.log(response.config); */
 
         const html = response.data;
-        console.log('html', html);
         const $ = cheerio.load(html);
-        const data = [];
 
-        $(".row li a[title]").each((index, element) => {
-          console.log(element);
-        });
+        let htmlStr = $('script[id="__NEXT_DATA__"]').text();
+        let result = JSON.parse(htmlStr);
 
-        
+        res.status(200).send(result.props.pageProps.page.content.merchandisedGrid);
+
+        /* for(let k in result.props.pageProps.page.content.merchandisedGrid) {
+          console.log(k, result.props.pageProps.page.content.merchandisedGrid[k].name);
+        } */
       }).catch(error => {
-        if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          console.error('Server responded with error:', error.response.data);
-          console.error('Status:', error.response.status);
-          console.error('Headers:', error.response.headers);
-        } else if (error.request) {
-          // The request was made but no response was received
-          console.error('No response received:', error.request);
-        } else {
-          // Something happened in setting up the request that triggered an Error
-          console.error('Error setting up request:', error.message);
-        }
-        console.error('Axios config:', error.config);
+        console.log('error', error);
       });
-
-
-    
-
-    /* $(".row li a[title]").each((index, element) => {
-      console.log(element);
-    }); */
-
-    /* $("a").each((index, element) => {
-      data.push({
-        text: $(element).text(),
-        href: $(element).attr("href"),
-      });
-    }); */
-
-    
-    //res.json(data);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Error accessing the URL" });
