@@ -33,8 +33,63 @@ function stripHtml(html)
 }
 
 app.get('/scrape', async (req, res, next) => {
-    //let url = 'https://www.nintendo.com/us/search/#p=1&cat=gme&sort=df';
-    let url = 'https://www.nintendo.com/us/store/games/#p=1&sort=df&show=0&f=topLevelFilters&topLevelFilters=Deals';
+    const url = 'https://u3b6gr4ua3-dsn.algolia.net/1/indexes/store_game_en_us/query';
+    const appId = 'U3B6GR4UA3';
+    const apiKey = 'a29c6927638bfd8cee23993e51e721c9';
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'x-algolia-application-id': appId,
+        'x-algolia-api-key': apiKey,
+    };
+
+    const body = {
+        "query": "",
+        "filters": "",
+        "hitsPerPage": 40,
+        "analytics": true,
+        "facetingAfterDistinct": true,
+        "clickAnalytics": true,
+        "highlightPreTag": "^*^^",
+        "highlightPostTag": "^*",
+        "attributesToHighlight": [
+            "description"
+        ],
+        "facets": [
+            "*"
+        ],
+        "maxValuesPerFacet": 100,
+        "page": 0
+    }
+
+    try {
+        const response = await axios.post(url, body, { headers: headers });
+        //logger.info(JSON.stringify(response.data));
+
+        for(let o of response.data.hits) {
+            console.log(o.title);
+        }
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    }
+});
+
+app.get('/scrape-old', async (req, res, next) => {
+    let url = 'https://www.nintendo.com/us/search/#p=1&cat=gme&sort=df';
+    //let url = 'https://www.nintendo.com/us/store/games/#p=1&sort=df&show=0&f=topLevelFilters&topLevelFilters=Deals';
+
+    axios.get(url).then(response => {
+        logger.info(response.data);
+        console.log(response);
+    }).catch(error => {
+        console.error('Error fetching root:', error);
+    });
+
+    return;
+
+
+
+
     let browser = await playwright.chromium.launch();
     let page = await browser.newPage();
       await page.goto(url);
@@ -59,7 +114,7 @@ app.get('/scrape', async (req, res, next) => {
 
         try {
             title = await gameDiv.locator('div.HRRF1').locator("> *").first().locator("> *").first().innerText();
-            //console.log(title);
+            console.log(title);
         } catch (error) {
 
         }
@@ -67,7 +122,7 @@ app.get('/scrape', async (req, res, next) => {
         try {
             releaseDate = await gameDiv.locator('div.HRRF1').locator("> *").first().locator("> *").nth(1).innerText();
             releaseDate = releaseDate.replace('Releases ', '');
-            //console.log(releaseDate);
+            console.log(releaseDate);
         } catch (error) {
 
         }
@@ -75,7 +130,7 @@ app.get('/scrape', async (req, res, next) => {
         try {
             currentPrice = await gameDiv.locator('div.HRRF1').locator("> *").nth(2).locator("> *").first().locator("> *").first().locator("> *").first().innerText();
             currentPrice = currentPrice.split(':').length > 1 ? stripHtml(currentPrice).split(':')[1] :currentPrice;
-            //console.log(currentPrice);
+            console.log(currentPrice);
         } catch (error) {
 
         }
@@ -83,7 +138,7 @@ app.get('/scrape', async (req, res, next) => {
         try {
             regularPrice = await gameDiv.locator('div.HRRF1').locator("> *").nth(2).locator("> *").first().locator("> *").first().locator("> *").nth(1).innerText();
             regularPrice = regularPrice.split(':').length > 1 ? stripHtml(regularPrice).split(':')[1] :regularPrice;
-            //console.log(regularPrice);
+            console.log(regularPrice);
         } catch (error) {
 
         }
