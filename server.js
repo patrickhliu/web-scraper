@@ -44,8 +44,8 @@ app.get('/scrape', async (req, res, next) => {
     };
 
     const body = {
-        "query": "",
-        "filters": "",
+        "query": "",                        // search any term
+        "filters": "",                      // nintendos filters
         "hitsPerPage": 40,
         "analytics": true,
         "facetingAfterDistinct": true,
@@ -62,13 +62,25 @@ app.get('/scrape', async (req, res, next) => {
         "page": 0
     }
 
+    let results = [];
+
     try {
         const response = await axios.post(url, body, { headers: headers });
         //logger.info(JSON.stringify(response.data));
 
         for(let o of response.data.hits) {
-            console.log(o.title);
+            let game = {
+                'photo_url': o.productImageSquare,
+                'title': o.title,
+                'release_date': o.releaseDate,
+                'current_price': o.price.salePrice,
+                'regular_price': o.price.regPrice,
+            }
+
+            results.push(game);
         }
+
+        res.send(results);
     } catch (error) {
         console.error('Error fetching data:', error);
     }
