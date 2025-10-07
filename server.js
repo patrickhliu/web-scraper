@@ -44,9 +44,10 @@ app.get('/scrape', async (req, res, next) => {
     };
 
     const body = {
-        "query": "",                        // search any term
-        "filters": "",                      // nintendos filters
-        "hitsPerPage": 40,
+        "query": req.query.q,
+        "filters": "",
+        "hitsPerPage": 50,
+        "distinct": 0,
         "analytics": true,
         "facetingAfterDistinct": true,
         "clickAnalytics": true,
@@ -80,7 +81,10 @@ app.get('/scrape', async (req, res, next) => {
             results.push(game);
         }
 
-        res.send(results);
+        res.send({
+            results: results,
+            total_pages: response.data.nbPages,
+        });
     } catch (error) {
         console.error('Error fetching data:', error);
     }
