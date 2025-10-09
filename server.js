@@ -36,7 +36,7 @@ app.get('/scrape', async (req, res, next) => {
     let filters = JSON.parse(req.query.filters);
     let slug = "store_game_en_us";
 
-    console.log(filters);
+    //console.log(filters);
     if(filters.sort_by == "title")  {
         if(filters.sort_dir == "asc") slug = "store_game_en_us_title_asc";
         if(filters.sort_dir == "desc") slug = "store_game_en_us_title_des";
@@ -52,7 +52,7 @@ app.get('/scrape', async (req, res, next) => {
         'x-algolia-api-key': apiKey,
     };
 
-    const body = {
+    let body = {
         "query": req.query.q,
         "filters": "",
         "hitsPerPage": 50,
@@ -70,6 +70,19 @@ app.get('/scrape', async (req, res, next) => {
         ],
         "maxValuesPerFacet": 100,
         "page": req.query.current_page - 1,
+    }
+
+    if(filters.game_category) {
+        let filterStr = "";
+
+        for(let str of filters.game_category) {
+            console.log(str);
+            if(!filterStr) filterStr += "topLevelFilters:'" + str + "'";
+            else filterStr += " OR topLevelFilters:'" + str + "'";
+        }
+
+        console.log((filterStr));
+        body.filters = filterStr;
     }
 
     let results = [];
@@ -99,6 +112,7 @@ app.get('/scrape', async (req, res, next) => {
         });
     } catch (error) {
         console.error('Error fetching data:', error);
+        //console.log('error...');
     }
 });
 
