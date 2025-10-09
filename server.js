@@ -77,19 +77,71 @@ app.get('/scrape', async (req, res, next) => {
     let filterStr = "";
     if(filters.game_category) {
         for(let str of filters.game_category) {
-            if(!filterStr) filterStr += "topLevelFilters:'" + str + "'";
-            else filterStr += " AND topLevelFilters:'" + str + "'";
+            if(str == "games") str = "(NOT topLevelFilters:'DLC' AND NOT topLevelFilters:'Games with DLC' AND NOT topLevelFilters:'Upgrade pack')";
+            if(str == "dlc") str = "(topLevelFilters:'DLC' AND NOT topLevelFilters:'Games with DLC')";
+            if(str == "both") str = "(topLevelFilters:'Games with DLC')";
+            if(str == "demo") str = "(topLevelFilters:'Demo available')";
+            if(str == "voucher") str = "(topLevelFilters:'Game voucher eligible')";
+
+            if(!filterStr) filterStr += str;
+            else filterStr += " AND " + str;
         }
     }
 
     if(filters.console) {
-        for(let str of filters.console) {
-            if(!filterStr) filterStr += "corePlatforms:'" + str + "'";
-            else filterStr += " AND corePlatforms:'" + str + "'";
+        let str = "";
+        //if(filters.console == "all") str = "(corePlatforms:'Nintendo Switch' OR corePlatforms:'Nintendo Switch 2')";
+        if(filters.console == "switch1") str = "(corePlatforms:'Nintendo Switch')";
+        else if(filters.console == "switch2") str = "(corePlatforms:'Nintendo Switch 2')";
+
+        if(str) {
+            if(!filterStr) filterStr += str;
+            else filterStr += " AND " + str;
         }
     }
 
-    console.log(filterStr);
+    if(filters.availability) {
+        for(let str of filters.availability) {
+            if(!filterStr) filterStr += "availability:'" + str + "'";
+            else filterStr += " AND availability:'" + str + "'";
+        }
+    }
+
+    if(filters.sales) {
+        for(let str of filters.sales) {
+            if(str == "sales") str = "(topLevelFilters:'Deals')";
+
+            if(!filterStr) filterStr += str;
+            else filterStr += " AND " + str;
+        }
+    }
+
+    if(filters.format) {
+        let str = "";
+        //if(filters.format == "all") str = "(editions:'Physical' OR editions:'Digital')";
+        if(filters.format == "physical") str = "(editions:'Physical')";
+        else if(filters.format == "digital") str = "(editions:'Digital')";
+
+        if(str) {
+            if(!filterStr) filterStr += str;
+            else filterStr += " AND " + str;
+        }
+    }
+
+    if(filters.price_range) {
+        let str = "";
+        if(filters.price_range == 0) str = "(priceRange:'Free to start')";
+        else if(filters.price_range == 1) str = "(priceRange:'$0 - $4.99')";
+        else if(filters.price_range == 2) str = "(priceRange:'$5 - $9.99')";
+        else if(filters.price_range == 3) str = "(priceRange:'$10 - $19.99')";
+        else if(filters.price_range == 4) str = "(priceRange:'$40+')";
+
+        if(str) {
+            if(!filterStr) filterStr += str;
+            else filterStr += " AND " + str;
+        }
+    }
+
     body.filters = filterStr;
 
     let results = [];
@@ -108,16 +160,29 @@ app.get('/scrape', async (req, res, next) => {
         count.upgrade = response.data.facets.topLevelFilters["Upgrade pack"];
 
         for(let o of response.data.hits) {
+            const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+            const oneDay = 1000 * 60 * 60 * 24;
+
+            let now = Date.now(); // already in ms...
             let releaseDate = new Date(o.releaseDate);
+            let discountEnds = null;
+
+            if(o.price.salePrice) {
+                discountEnds = o.eshopDetails.discountPriceEndTimestamp * 1000;
+            }
 
             let game = {
-                photo_url: o.productImageSquare,
+                photo_url: o.productImageSquare ? o.productImageSquare : "https://assets.nintendo.com/image/upload/ar_16:9,w_500/" + o.productImage,
                 title: o.title,
-                release_date: releaseDate.toDateString(),
+                release_date: releaseDate.toLocaleString('en-US', options),
+                release_future: releaseDate > now,
+                release_future_days: (releaseDate > now) ? Math.round(Math.abs(((Math.floor(releaseDate.getTime())) - now) / oneDay)) : null,
                 platform_code : o.platformCode,
                 current_price: o.price.salePrice,
                 regular_price: o.price.regPrice,
                 discount_percent: !o.price.salePrice ? 0 : Math.ceil(((o.price.regPrice - o.price.salePrice) / o.price.regPrice) * 100),
+                discount_ends: !discountEnds ? null : Math.round(Math.abs((discountEnds - now) / oneDay)),
+                availability: o.availability,
             }
 
             results.push(game);
@@ -129,8 +194,8 @@ app.get('/scrape', async (req, res, next) => {
             total_pages: response.data.nbPages,
         });
     } catch (error) {
-        console.error('Error fetching data:', error);
-        //console.log('error...');
+        //console.error('Error fetching data:', error);
+        console.log('error2...' + filterStr);
     }
 });
 
