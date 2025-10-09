@@ -40,6 +40,9 @@ app.get('/scrape', async (req, res, next) => {
     if(filters.sort_by == "title")  {
         if(filters.sort_dir == "asc") slug = "store_game_en_us_title_asc";
         if(filters.sort_dir == "desc") slug = "store_game_en_us_title_des";
+    } else if (filters.sort_by == "price") {
+        if(filters.sort_dir == "asc") slug = "store_game_en_us_price_asc";
+        if(filters.sort_dir == "desc") slug = "store_game_en_us_price_des";
     }
 
     let url = "https://u3b6gr4ua3-dsn.algolia.net/1/indexes/" + slug + "/query";
@@ -78,7 +81,7 @@ app.get('/scrape', async (req, res, next) => {
         for(let str of filters.game_category) {
             console.log(str);
             if(!filterStr) filterStr += "topLevelFilters:'" + str + "'";
-            else filterStr += " OR topLevelFilters:'" + str + "'";
+            else filterStr += " AND topLevelFilters:'" + str + "'";
         }
 
         console.log((filterStr));
@@ -86,10 +89,19 @@ app.get('/scrape', async (req, res, next) => {
     }
 
     let results = [];
+    let count = {
+        dlc:0, deals:0, games_dlc:0, demo:0, voucher:0, upgrade:0
+    };
 
     try {
         const response = await axios.post(url, body, { headers: headers });
-        //logger.info(JSON.stringify(response.data));
+        logger.info(JSON.stringify(response.data));
+        count.dlc = response.data.facets.topLevelFilters.DLC;
+        count.deals = response.data.facets.topLevelFilters.Deals;
+        count.games_dlc = response.data.facets.topLevelFilters["Games with DLC"];
+        count.demo = response.data.facets.topLevelFilters["Demo available"];
+        count.voucher = response.data.facets.topLevelFilters["Game Voucher eligible"];
+        count.upgrade = response.data.facets.topLevelFilters["Upgrade pack"];
 
         for(let o of response.data.hits) {
             let releaseDate = new Date(o.releaseDate);
@@ -108,6 +120,7 @@ app.get('/scrape', async (req, res, next) => {
 
         res.send({
             results: results,
+            count: count,
             total_pages: response.data.nbPages,
         });
     } catch (error) {
