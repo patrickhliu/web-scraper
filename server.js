@@ -36,7 +36,6 @@ app.get('/scrape', async (req, res, next) => {
     let filters = JSON.parse(req.query.filters);
     let slug = "store_game_en_us";
 
-    //console.log(filters);
     if(filters.sort_by == "title")  {
         if(filters.sort_dir == "asc") slug = "store_game_en_us_title_asc";
         if(filters.sort_dir == "desc") slug = "store_game_en_us_title_des";
@@ -75,18 +74,23 @@ app.get('/scrape', async (req, res, next) => {
         "page": req.query.current_page - 1,
     }
 
+    let filterStr = "";
     if(filters.game_category) {
-        let filterStr = "";
-
         for(let str of filters.game_category) {
-            console.log(str);
             if(!filterStr) filterStr += "topLevelFilters:'" + str + "'";
             else filterStr += " AND topLevelFilters:'" + str + "'";
         }
-
-        console.log((filterStr));
-        body.filters = filterStr;
     }
+
+    if(filters.console) {
+        for(let str of filters.console) {
+            if(!filterStr) filterStr += "corePlatforms:'" + str + "'";
+            else filterStr += " AND corePlatforms:'" + str + "'";
+        }
+    }
+
+    console.log(filterStr);
+    body.filters = filterStr;
 
     let results = [];
     let count = {
@@ -107,12 +111,13 @@ app.get('/scrape', async (req, res, next) => {
             let releaseDate = new Date(o.releaseDate);
 
             let game = {
-                'photo_url': o.productImageSquare,
-                'title': o.title,
-                'release_date': releaseDate.toDateString(),
-                'platform_code' : o.platformCode,
-                'current_price': o.price.salePrice,
-                'regular_price': o.price.regPrice,
+                photo_url: o.productImageSquare,
+                title: o.title,
+                release_date: releaseDate.toDateString(),
+                platform_code : o.platformCode,
+                current_price: o.price.salePrice,
+                regular_price: o.price.regPrice,
+                discount_percent: !o.price.salePrice ? 0 : Math.ceil(((o.price.regPrice - o.price.salePrice) / o.price.regPrice) * 100),
             }
 
             results.push(game);
