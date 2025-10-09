@@ -79,10 +79,13 @@ app.get('/scrape', async (req, res, next) => {
         //logger.info(JSON.stringify(response.data));
 
         for(let o of response.data.hits) {
+            let releaseDate = new Date(o.releaseDate);
+
             let game = {
                 'photo_url': o.productImageSquare,
                 'title': o.title,
-                'release_date': o.releaseDate,
+                'release_date': releaseDate.toDateString(),
+                'platform_code' : o.platformCode,
                 'current_price': o.price.salePrice,
                 'regular_price': o.price.regPrice,
             }
